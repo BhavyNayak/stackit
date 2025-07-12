@@ -1,127 +1,120 @@
-from utils import raise_exception, is_otp_expire
 from sqlalchemy.future import select
-from models import User
-from ..consts import UserTypeEnum
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import update, delete
+from models import User
+from consts import UserTypeEnum
+from utils.auth_helper import get_password_hash, verify_password
+from utils.exception_handler import raise_exception
+from schemas.user_schemas import UserCreate, UserUpdate
+from typing import List, Optional
 from uuid import UUID
 
-
-
 class UserService:
-    """Has methods for user related operations"""
-    def __init__(self, db:AsyncSession):
+    """Service class for user-related database operations"""
+    
+    def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_user(
-            self, 
-            phone_number: int, 
-            is_staff: bool = True, 
-            is_active: bool = True,
-            is_all:bool = False
-            )-> User:
-        """ 
-        fetch user from database according to conditions
+    async def get_user_by_id(self, user_id: UUID) -> Optional[User]:
+        """Get user by ID"""
+        result = await self.db.execute(select(User).filter(User.user_id == user_id))
+        return result.scalar_one_or_none()
+
+    async def get_user_by_email(self, email: str) -> Optional[User]:
+        """Get user by email"""
+        result = await self.db.execute(select(User).filter(User.email == email))
+        return result.scalar_one_or_none()
+
+    async def get_user_by_username(self, username: str) -> Optional[User]:
+        """Get user by username"""
+        result = await self.db.execute(select(User).filter(User.username == username))
+        return result.scalar_one_or_none()
+
+    async def get_all_users(self, skip: int = 0, limit: int = 100) -> List[User]:
+        """Get all users with pagination"""
+        result = await self.db.execute(select(User).offset(skip).limit(limit))
+        return result.scalars().all()
+
+    async def create_user(self, user_data: UserCreate) -> User:
+        """Create a new user"""
+        # Check if email already exists
+        existing_user = await self.get_user_by_email(user_data.email)
+        raise_exception(existing_user is not None, "Email already registered")
         
-        Params:
-        phone_number: 10 digit phone number
-        is_staff: default True, get only staff data, if false then give only customer data
-        is_active: default True, give only active members, if false give all data 
-        is_all: `True`, to fetch all data 
-
-        Return: user object
-        """
-        filter = [User.phone_number == phone_number]
+        # Check if username already exists
+        existing_username = await self.get_user_by_username(user_data.username)
+        raise_exception(existing_username is not None, "Username already taken")
         
-        # check for staff or all types
-        if is_staff and not is_all:
-            filter.append(User.user_type != UserTypeEnum.CUSTOMER)
-        elif not is_all:
-            filter.append(User.user_type == UserTypeEnum.CUSTOMER)
+        # Hash the password
+        hashed_password = get_password_hash(user_data.password)
         
-        # check for active users
-        if is_active:
-            filter.append(User.is_active == True)
-
-        result = await self.db.execute(select(User).filter(*filter))
-
-        user = result.scalar_one_or_none()
-
-        return user
-
-   
-    async def create_user(self, is_staff: bool,**kwargs)-> User:
-        """
-        create user in database with given parameters
-        params:
-        is_staff: True, add staff data. False, add customer data
-
-        Return: new user object
-        """
-        if is_staff:
-            new_user = User(
-                name = kwargs.get('name'),
-                phone_number = kwargs.get('phone_number'),
-                email = kwargs.get('email'),
-                user_type = kwargs.get('user_type'),
-                tenant_id = kwargs.get('tenant_id'),
-                restaurant_id = kwargs.get('restaurant_id'),
-                is_active = False
-            )
-        else:
-            new_user = User(
-                phone_number = kwargs.get('phone_number'),
-                name = kwargs.get('name'),
-                is_active = False
-            )
+        # Create new user
+        new_user = User(
+            username=user_data.username,
+            email=user_data.email,
+            password=hashed_password,
+            role=user_data.role
+        )
+        
         self.db.add(new_user)
         await self.db.commit()
         await self.db.refresh(new_user)
         return new_user
 
-
-    async def delete_staff_by_restaurant(self, user_id: UUID)-> User:
-        """
-        This method delete the user (staff)
-
-        params:
-        user_id: UUID of the user
-
-        Output: UUID of the deleted user
-        """
-        result = await self.db.execute(select(User).filter(User.user_id == user_id))
-        user = result.scalar_one_or_none()
-        user.restaurant_id = None
-        user.tenant_id = None
-        user.is_active = False
-        self.db.add(user)
-        await self.db.commit() 
-        return user
-
-    async def otp_verification(self, phone_number: int, otp: int)-> User:
-        """
-        verifies otp
+    async def update_user(self, user_id: UUID, user_data: UserUpdate) -> Optional[User]:
+        """Update user information"""
+        user = await self.get_user_by_id(user_id)
+        raise_exception(user is None, "User not found")
         
-        params:
-        phone_number: 10 digit phone number
-        otp: Six digit otp
-
-        Return: user object
-        """
-        result = await self.db.execute(select(User).filter(User.otp==otp))
-        user = result.scalar_one_or_none()
-        raise_exception(not user or phone_number!=user.phone_number, 400, "Invalid OTP")
-        raise_exception(is_otp_expire(user.otp_access_time), 400, "OTP is expired")
+        # Check if new email already exists (if email is being updated)
+        if user_data.email and user_data.email != user.email:
+            existing_user = await self.get_user_by_email(user_data.email)
+            raise_exception(existing_user is not None, "Email already registered")
+        
+        # Check if new username already exists (if username is being updated)
+        if user_data.username and user_data.username != user.username:
+            existing_username = await self.get_user_by_username(user_data.username)
+            raise_exception(existing_username is not None, "Username already taken")
+        
+        # Update fields
+        update_data = {}
+        if user_data.username is not None:
+            update_data["username"] = user_data.username
+        if user_data.email is not None:
+            update_data["email"] = user_data.email
+        if user_data.role is not None:
+            update_data["role"] = user_data.role
+        
+        if update_data:
+            await self.db.execute(
+                update(User).where(User.user_id == user_id).values(**update_data)
+            )
+            await self.db.commit()
+            await self.db.refresh(user)
+        
         return user
-    
-    
-    async def fetch_role(self, user_id: UUID)-> str:
-        """
-        Fetch role or user_type of the user
 
-        params:
-        user_id : UUID of the user
+    async def delete_user(self, user_id: UUID) -> bool:
+        """Delete a user"""
+        user = await self.get_user_by_id(user_id)
+        raise_exception(user is None, "User not found")
+        
+        await self.db.execute(delete(User).where(User.user_id == user_id))
+        await self.db.commit()
+        return True
 
-        Output: role of user
-        """
-        result = await self.db.execute(select(User.user_type).filter(User.user_id==user_id))
-        return result.scalar_one_or_none()
+    async def authenticate_user(self, email: str, password: str) -> Optional[User]:
+        """Authenticate user with email and password"""
+        user = await self.get_user_by_email(email)
+        if not user:
+            return None
+        if not verify_password(password, user.password):
+            return None
+        return user
+
+    async def get_users_by_role(self, role: UserTypeEnum, skip: int = 0, limit: int = 100) -> List[User]:
+        """Get users by role"""
+        result = await self.db.execute(
+            select(User).filter(User.role == role).offset(skip).limit(limit)
+        )
+        return result.scalars().all()
