@@ -12,7 +12,7 @@ from schemas.response_schemas import create_response
 
 router = APIRouter()
 
-@router.post("/", response_model=dict)
+@router.post("/")
 async def create_question(
     question_data: QuestionCreate,
     db: AsyncSession = Depends(get_async_db),
@@ -28,7 +28,7 @@ async def create_question(
         data=QuestionResponse.from_orm(question)
     )
 
-@router.get("/", response_model=dict)
+@router.get("/")
 async def get_all_questions(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
@@ -47,7 +47,7 @@ async def get_all_questions(
         data=[QuestionResponse.from_orm(question) for question in questions]
     )
 
-@router.get("/my-questions", response_model=dict)
+@router.get("/my-questions")
 async def get_my_questions(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
@@ -64,7 +64,7 @@ async def get_my_questions(
         data=[QuestionResponse.from_orm(question) for question in questions]
     )
 
-@router.get("/{question_id}", response_model=dict)
+@router.get("/{question_id}")
 async def get_question_by_id(
     question_id: UUID,
     db: AsyncSession = Depends(get_async_db)
@@ -90,7 +90,7 @@ async def get_question_by_id(
         data=response_data
     )
 
-@router.put("/{question_id}", response_model=dict)
+@router.put("/{question_id}")
 async def update_question(
     question_id: UUID,
     question_data: QuestionUpdate,
@@ -108,7 +108,7 @@ async def update_question(
         data=QuestionResponse.from_orm(question)
     )
 
-@router.delete("/{question_id}", response_model=dict)
+@router.delete("/{question_id}")
 async def delete_question(
     question_id: UUID,
     db: AsyncSession = Depends(get_async_db),
@@ -122,7 +122,7 @@ async def delete_question(
         message="Question deleted successfully"
     )
 
-@router.get("/user/{user_id}", response_model=dict)
+@router.get("/user/{user_id}")
 async def get_questions_by_user_id(
     user_id: UUID,
     skip: int = Query(0, ge=0),

@@ -12,7 +12,7 @@ from schemas.response_schemas import create_response
 
 router = APIRouter()
 
-@router.post("/", response_model=dict)
+@router.post("/")
 async def create_answer(
     answer_data: AnswerCreate,
     db: AsyncSession = Depends(get_async_db),
@@ -28,7 +28,7 @@ async def create_answer(
         data=AnswerResponse.from_orm(answer)
     )
 
-@router.get("/question/{question_id}", response_model=dict)
+@router.get("/question/{question_id}")
 async def get_answers_by_question(
     question_id: UUID,
     skip: int = Query(0, ge=0),
@@ -43,7 +43,7 @@ async def get_answers_by_question(
         data=[AnswerResponse.from_orm(answer) for answer in answers]
     )
 
-@router.get("/my-answers", response_model=dict)
+@router.get("/my-answers")
 async def get_my_answers(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
@@ -60,7 +60,7 @@ async def get_my_answers(
         data=[AnswerResponse.from_orm(answer) for answer in answers]
     )
 
-@router.get("/{answer_id}", response_model=dict)
+@router.get("/{answer_id}")
 async def get_answer_by_id(
     answer_id: UUID,
     db: AsyncSession = Depends(get_async_db)
@@ -86,7 +86,7 @@ async def get_answer_by_id(
         data=response_data
     )
 
-@router.put("/{answer_id}", response_model=dict)
+@router.put("/{answer_id}")
 async def update_answer(
     answer_id: UUID,
     answer_data: AnswerUpdate,
@@ -104,13 +104,13 @@ async def update_answer(
         data=AnswerResponse.from_orm(answer)
     )
 
-@router.delete("/{answer_id}", response_model=dict)
+@router.delete("/{answer_id}")
 async def delete_answer(
     answer_id: UUID,
     db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Delete answer (only by the author)"""
+    """Delete an answer (only by the author)"""
     answer_service = AnswerService(db)
     await answer_service.delete_answer(answer_id, current_user.user_id)
     
@@ -118,7 +118,7 @@ async def delete_answer(
         message="Answer deleted successfully"
     )
 
-@router.post("/{answer_id}/accept", response_model=dict)
+@router.post("/{answer_id}/accept")
 async def accept_answer(
     answer_id: UUID,
     db: AsyncSession = Depends(get_async_db),
@@ -133,7 +133,7 @@ async def accept_answer(
         data=AnswerResponse.from_orm(answer)
     )
 
-@router.get("/user/{user_id}", response_model=dict)
+@router.get("/user/{user_id}")
 async def get_answers_by_user_id(
     user_id: UUID,
     skip: int = Query(0, ge=0),
@@ -148,7 +148,7 @@ async def get_answers_by_user_id(
         data=[AnswerResponse.from_orm(answer) for answer in answers]
     )
 
-@router.get("/question/{question_id}/accepted", response_model=dict)
+@router.get("/question/{question_id}/accepted")
 async def get_accepted_answer_for_question(
     question_id: UUID,
     db: AsyncSession = Depends(get_async_db)

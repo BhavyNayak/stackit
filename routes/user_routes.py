@@ -12,7 +12,7 @@ from schemas.response_schemas import create_response
 
 router = APIRouter()
 
-@router.post("/register", response_model=dict)
+@router.post("/register")
 async def register_user(
     user_data: UserCreate,
     db: AsyncSession = Depends(get_async_db)
@@ -27,7 +27,7 @@ async def register_user(
         data=UserResponse.from_orm(user)
     )
 
-@router.post("/login", response_model=dict)
+@router.post("/login")
 async def login_user(
     user_credentials: UserLogin,
     db: AsyncSession = Depends(get_async_db)
@@ -52,7 +52,7 @@ async def login_user(
         data=Token(access_token=access_token, token_type="bearer")
     )
 
-@router.get("/me", response_model=dict)
+@router.get("/me")
 async def get_current_user_info(
     current_user: User = Depends(get_current_active_user)
 ):
@@ -61,7 +61,7 @@ async def get_current_user_info(
         data=UserResponse.from_orm(current_user)
     )
 
-@router.get("/", response_model=dict)
+@router.get("/")
 async def get_all_users(
     skip: int = 0,
     limit: int = 100,
@@ -76,7 +76,7 @@ async def get_all_users(
         data=[UserResponse.from_orm(user) for user in users]
     )
 
-@router.get("/{user_id}", response_model=dict)
+@router.get("/{user_id}")
 async def get_user_by_id(
     user_id: UUID,
     db: AsyncSession = Depends(get_async_db),
@@ -96,7 +96,7 @@ async def get_user_by_id(
         data=UserResponse.from_orm(user)
     )
 
-@router.put("/{user_id}", response_model=dict)
+@router.put("/{user_id}")
 async def update_user(
     user_id: UUID,
     user_data: UserUpdate,
@@ -119,7 +119,7 @@ async def update_user(
         data=UserResponse.from_orm(user)
     )
 
-@router.delete("/{user_id}", response_model=dict)
+@router.delete("/{user_id}")
 async def delete_user(
     user_id: UUID,
     db: AsyncSession = Depends(get_async_db),

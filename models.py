@@ -5,7 +5,7 @@ from sqlalchemy.orm import relationship
 import uuid
 from datetime import datetime
 from utils.database_helper import Base
-from consts import UserTypeEnum as UserRole
+from consts import UserTypeEnum
 
 class User(Base):
     __tablename__ = "users"
@@ -14,7 +14,7 @@ class User(Base):
     username = Column(String(255), nullable=False, unique=True)
     email = Column(String(255), nullable=False, unique=True)
     password = Column(String(255), nullable=False)
-    role = Column(Enum(UserRole), nullable=False, default=UserRole.user)
+    role = Column(Enum(UserTypeEnum, name="user_role"), nullable=False, default=UserTypeEnum.user)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     questions = relationship("Question", back_populates="author")
@@ -45,4 +45,3 @@ class Answer(Base):
 
     question = relationship("Question", back_populates="answers")
     author = relationship("User", back_populates="answers")
-

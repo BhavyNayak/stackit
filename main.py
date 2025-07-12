@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import uvicorn
+from sqlalchemy import text
 
 from routes import user_routes, question_routes, answer_routes
 from utils.database_helper import engine, async_engine
@@ -11,8 +12,24 @@ from models import Base
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    async with async_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        async with async_engine.begin() as conn:
+            # Drop existing enum types to avoid conflicts
+            await conn.execute(text("DROP TYPE IF EXISTS usertypeenum CASCADE"))
+            await conn.execute(text("DROP TYPE IF EXISTS user_role CASCADE"))
+            # Create tables
+            await conn.run_sync(Base.metadata.create_all)
+        print("✅ Database initialized successfully")
+    except Exception as e:
+        print(f"⚠️ Database initialization warning: {e}")
+        # Try to create tables anyway
+        try:
+            async with async_engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            print("✅ Tables created successfully")
+        except Exception as e2:
+            print(f"❌ Database initialization failed: {e2}")
+    
     yield
     # Shutdown
     await async_engine.dispose()

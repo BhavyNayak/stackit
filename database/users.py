@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import update, delete
 from models import User
 from consts import UserTypeEnum
+from consts import UserTypeEnum as UserRole
 from utils.auth_helper import get_password_hash, verify_password
 from utils.exception_handler import raise_exception
 from schemas.user_schemas import UserCreate, UserUpdate
@@ -53,7 +54,8 @@ class UserService:
             username=user_data.username,
             email=user_data.email,
             password=hashed_password,
-            role=user_data.role
+            # role=user_data.role
+            role= UserRole(user_data.role)
         )
         
         self.db.add(new_user)
